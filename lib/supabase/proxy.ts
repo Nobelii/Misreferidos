@@ -47,11 +47,20 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
+  // Allowlist de rutas públicas. Es deny-by-default: lo que no esté aquí exige
+  // sesión. `/marca/` y `/u/` son las dos caras del catálogo público — se
+  // comparten y se indexan, así que no pueden pedir login.
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    !request.nextUrl.pathname.startsWith("/auth") &&
+    !request.nextUrl.pathname.startsWith("/u/") &&
+    !request.nextUrl.pathname.startsWith("/marca/") &&
+    // Solo redirige a /marca/[slug], que es público. Pedir sesión aquí mandaría
+    // a login a quien abre un enlace viejo ya compartido, en vez de llevarlo a
+    // la oferta.
+    !request.nextUrl.pathname.startsWith("/app/referido/")
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();

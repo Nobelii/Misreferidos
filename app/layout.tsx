@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter, Newsreader, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { AuthProvider } from "@/components/auth-provider";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -9,12 +10,29 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: "MisReferidos — Beneficios que la comunidad comparte",
+  description:
+    "Descuentos, meses gratis, envíos gratis y códigos útiles compartidos por la comunidad.",
 };
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
+  display: "swap",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
+
+// Serif editorial de los titulares (hero, encabezados de sección, valor de card).
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  display: "swap",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+});
+
+// Grotesca con carácter para el nav y wordmarks.
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   display: "swap",
   subsets: ["latin"],
 });
@@ -25,15 +43,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased`}>
+    <html lang="es" suppressHydrationWarning>
+      <body
+        className={`${inter.variable} ${newsreader.variable} ${spaceGrotesk.variable} ${inter.className} antialiased`}
+      >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
-          {children}
+          <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
       </body>
     </html>

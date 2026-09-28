@@ -1,15 +1,20 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import type { Database } from "@/lib/database.types";
 
 /**
- * Especially important if using Fluid compute: Don't put this client in a
- * global variable. Always create a new client within each function when using
- * it.
+ * Cliente de servidor. Envuelto en React `cache()`: en un mismo request todas
+ * las queries comparten una instancia y una sola lectura de cookies(), en vez
+ * de reconstruir el cliente en cada llamada.
+ *
+ * cache() es por-request, así que no es un global compartido entre peticiones:
+ * sigue siendo seguro con Fluid compute.
  */
-export async function createClient() {
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
@@ -31,4 +36,4 @@ export async function createClient() {
       },
     },
   );
-}
+});

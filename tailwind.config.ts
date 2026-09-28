@@ -10,7 +10,30 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        display: ["var(--font-newsreader)", "Georgia", "serif"],
+        nav: ["var(--font-space-grotesk)", "var(--font-inter)", "sans-serif"],
+      },
       colors: {
+        // Superficies cálidas del rediseño editorial.
+        bone: "#F5F1E8",
+        paper: "#FBF9F3",
+        ink: "#1B1A17",
+        line: "#E6E0D3",
+        // Acento salvia/oliva — reemplaza el índigo en toda la app.
+        olive: {
+          50: "#EEF1E4",
+          100: "#E1E7CF",
+          200: "#CAD4AC",
+          300: "#AEBB86",
+          400: "#93A268",
+          500: "#7C8A5A",
+          600: "#5E6B42",
+          700: "#4C5636",
+          800: "#3C442B",
+          900: "#2E3421",
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -56,6 +79,10 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      transitionTimingFunction: {
+        // ease-out-cubic: la curva de la casa para hover, press y paneles.
+        brand: "cubic-bezier(.33, 1, .68, 1)",
       },
     },
   },
