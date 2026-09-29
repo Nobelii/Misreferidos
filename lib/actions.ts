@@ -1,9 +1,12 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { createHash } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import type { Enums, Json } from "@/lib/database.types";
+import { ALLOWED_AVATAR_TYPES, MAX_AVATAR_BYTES } from "@/lib/types";
 
 export interface PublishInput {
   brand: string;
@@ -19,6 +22,10 @@ export interface PublishInput {
   conditions: string[];
   expiresAt: string;
 }
+
+/** Texto para el trigger enforce_rate_limit (ver migración 20260928010000). */
+const RATE_LIMIT_ERROR =
+  "Vas demasiado rápido. Espera un rato e inténtalo de nuevo.";
 
 export type ActionResult = { ok: true; id: string } | { ok: false; error: string };
 
@@ -80,6 +87,8 @@ export async function publishReferral(input: PublishInput): Promise<ActionResult
       return { ok: false, error: "Este tipo de beneficio necesita un valor." };
     if (error.message.includes("redeem_url_fmt"))
       return { ok: false, error: "El enlace debe empezar por http:// o https://" };
+    if (error.message.includes("rate_limit"))
+      return { ok: false, error: RATE_LIMIT_ERROR };
     if (error.message.includes("title_len"))
       return { ok: false, error: "El título debe tener entre 5 y 120 caracteres." };
     return { ok: false, error: "No pudimos publicarlo. Inténtalo de nuevo." };
@@ -101,6 +110,15 @@ export async function publishReferral(input: PublishInput): Promise<ActionResult
  * El contador de `referrals` lo sube un trigger, no esta función: así el número
  * no depende de que el cliente se acuerde de incrementarlo, y el índice único
  * de dedupe evita que refrescar la página infle las vistas.
+ *
+ * Ese índice solo actúa si `session_hash` viene relleno. Con sesión se usa el
+ * id de usuario; sin ella, IP + user-agent. Siempre hasheado: en la tabla no
+ * queda ni la IP ni el uid en claro. El duplicado choca con el índice (23505)
+ * y se ignora, que es justo lo que queremos.
+ *
+ * Límite conocido: esto frena recargas, no a alguien que llame a PostgREST
+ * directamente con hashes inventados. Para eso habría que quitar el INSERT a
+ * anon y registrar los eventos solo desde el servidor.
  */
 export async function trackEvent(
   referralId: string,
@@ -111,10 +129,16 @@ export async function trackEvent(
     data: { user },
   } = await supabase.auth.getUser();
 
+  const h = await headers();
+  const fingerprint = user
+    ? `u:${user.id}`
+    : `a:${h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? ""}|${h.get("user-agent") ?? ""}`;
+
   await supabase.from("referral_events").insert({
     referral_id: referralId,
     actor_id: user?.id ?? null,
     kind,
+    session_hash: createHash("sha256").update(fingerprint).digest("hex").slice(0, 32),
   });
 }
 
@@ -201,6 +225,80 @@ export async function updateMyProfile(input: {
   }
   revalidatePath("/app/perfil");
   return { ok: true, id: user.id };
+}
+
+/**
+ * Sube (o quita) el avatar del usuario en sesión.
+ *
+ * El nombre del archivo lleva timestamp en vez de ser fijo: la URL pública la
+ * sirve un CDN, y reusar `avatar.png` dejaría la imagen vieja cacheada horas.
+ * Tras subir la nueva se borran las anteriores de la carpeta.
+ *
+ * Con `formData` sin archivo (o `remove=1`) se quita el avatar.
+ */
+export async function updateMyAvatar(
+  formData: FormData,
+): Promise<{ ok: true; url: string | null } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/login");
+
+  const bucket = supabase.storage.from("avatars");
+  const file = formData.get("avatar");
+  const remove = formData.get("remove") === "1";
+
+  let url: string | null = null;
+  let keep: string | null = null;
+
+  if (!remove) {
+    if (!(file instanceof File) || file.size === 0)
+      return { ok: false, error: "Elige una imagen." };
+    if (!(ALLOWED_AVATAR_TYPES as readonly string[]).includes(file.type))
+      return { ok: false, error: "La imagen debe ser PNG, JPG o WEBP." };
+    if (file.size > MAX_AVATAR_BYTES)
+      return { ok: false, error: "La imagen pesa demasiado (máx. 1 MB)." };
+
+    const ext = file.type.split("/")[1].replace("jpeg", "jpg");
+    keep = `avatar-${Date.now()}.${ext}`;
+    const path = `${user.id}/${keep}`;
+
+    const { error: uploadError } = await bucket.upload(path, file, {
+      contentType: file.type,
+      cacheControl: "31536000",
+      upsert: false,
+    });
+    if (uploadError)
+      return { ok: false, error: "No pudimos subir la imagen. Inténtalo de nuevo." };
+
+    url = bucket.getPublicUrl(path).data.publicUrl;
+  }
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .update({ avatar_url: url })
+    .eq("id", user.id)
+    .select("username")
+    .single();
+
+  if (error) {
+    if (keep) await bucket.remove([`${user.id}/${keep}`]);
+    return { ok: false, error: "No pudimos guardar la imagen." };
+  }
+
+  // Limpieza de los avatares anteriores. Si falla no pasa nada grave: solo
+  // quedan archivos huérfanos en la carpeta del usuario.
+  const { data: existing } = await bucket.list(user.id);
+  const stale = (existing ?? [])
+    .map((f) => f.name)
+    .filter((name) => name !== keep)
+    .map((name) => `${user.id}/${name}`);
+  if (stale.length > 0) await bucket.remove(stale);
+
+  updateTag(`profile:${profile.username}`);
+  revalidatePath("/app/perfil");
+  return { ok: true, url };
 }
 
 // ---------------------------------------------------------------------------
@@ -352,6 +450,8 @@ export async function reportReferral(
     // mismo referido mientras el primer reporte siga abierto.
     if (error.code === "23505")
       return { ok: false, error: "Ya reportaste este referido. Lo estamos revisando." };
+    if (error.message.includes("rate_limit"))
+      return { ok: false, error: RATE_LIMIT_ERROR };
     return { ok: false, error: "No pudimos enviar el reporte." };
   }
 

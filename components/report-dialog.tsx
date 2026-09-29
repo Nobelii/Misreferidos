@@ -98,7 +98,7 @@ export function ReportDialog({ referralId }: { referralId: string }) {
           rows={2}
           maxLength={500}
           placeholder="Probé el código y decía que ya expiró…"
-          className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+          className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-xs placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring resize-y"
         />
       </div>
 

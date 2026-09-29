@@ -29,7 +29,7 @@ export function BrandCard({ brand }: { brand: BrandSummary }) {
     <Link href={`/marca/${brand.slug}`} className="group block">
       <Card
         className={cn(
-          "relative flex h-full flex-col gap-3 p-4 bg-paper border-line shadow-sm cursor-pointer",
+          "relative flex h-full flex-col gap-3 p-4 bg-paper border-line shadow-xs cursor-pointer",
           "transition-[transform,box-shadow,border-color] duration-200 ease-brand hover:shadow-md hover:-translate-y-0.5 hover:border-olive-300",
         )}
       >

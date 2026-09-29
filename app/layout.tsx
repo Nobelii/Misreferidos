@@ -2,17 +2,20 @@ import type { Metadata } from "next";
 import { Inter, Newsreader, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/components/auth-provider";
+import { siteName, siteUrl } from "@/lib/site";
 import "./globals.css";
 
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
+  metadataBase: new URL(siteUrl),
   title: "MisReferidos — Beneficios que la comunidad comparte",
   description:
     "Descuentos, meses gratis, envíos gratis y códigos útiles compartidos por la comunidad.",
+  openGraph: {
+    type: "website",
+    siteName,
+    locale: "es_ES",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 const inter = Inter({

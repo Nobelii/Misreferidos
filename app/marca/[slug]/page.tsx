@@ -30,11 +30,16 @@ export async function generateMetadata({
       ? formatBenefitValue({ type: brand.bestType, value: brand.bestValue })
       : null;
 
+  const title = `Códigos y referidos de ${brand.name} | MisReferidos`;
+  const description = hook
+    ? `${hook} y ${brand.offersCount} ofertas activas de ${brand.name}, compartidas por la comunidad.`
+    : `Referidos y códigos de ${brand.name} compartidos por la comunidad.`;
+
   return {
-    title: `Códigos y referidos de ${brand.name} | MisReferidos`,
-    description: hook
-      ? `${hook} y ${brand.offersCount} ofertas activas de ${brand.name}, compartidas por la comunidad.`
-      : `Referidos y códigos de ${brand.name} compartidos por la comunidad.`,
+    title,
+    description,
+    alternates: { canonical: `/marca/${brand.slug}` },
+    openGraph: { title, description, url: `/marca/${brand.slug}` },
   };
 }
 
@@ -85,19 +90,10 @@ export default async function BrandPage({
   // Lectura cacheada (ver getBrandBySlug) y fuera del Suspense, igual que en
   // /u/[username].
   //
-  // OJO: renderiza la página de not-found correcta, pero el status es 200, no
-  // 404. Medido en build de producción: la respuesta llega con
-  // `x-nextjs-prerender: 1` y `x-nextjs-postponed: 1`, o sea que es el shell
-  // prerenderizado en build — las cabeceras ya se enviaron antes de que corra
-  // nada en request.
-  //
-  // Probado y descartado: mover este notFound() a generateMetadata() tampoco
-  // cambia el status, por el mismo motivo. La única salida sería comprobar la
-  // existencia en el middleware (ver "Pendiente" en STRUCTURE.md).
-  //
-  // Mientras tanto no es un problema de indexación: Next inserta
-  // `<meta name="robots" content="noindex">` en la página de not-found, y no lo
-  // pone en las marcas que sí existen. Verificado.
+  // El status 404 real lo pone el proxy (lib/supabase/proxy.ts): esta página
+  // es PPR y el shell prerenderizado sale con 200 antes de que corra este
+  // notFound(). Aquí queda como red de seguridad si el proxy deja pasar algo
+  // (p. ej. un error de la base), para no pintar una marca vacía.
   const brand = await getBrandBySlug(slug);
   if (!brand) notFound();
 

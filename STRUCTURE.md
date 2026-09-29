@@ -133,23 +133,49 @@ Resultado: `/`, `/app`, `/app/explorar` y `/app/publicar` son **estáticas**
 - `refresh-popular-threshold` — cada noche, recalcula el percentil 80 real de
   vistas para el tag "Más usado".
 
-## Cuentas de demo
+## Desarrollo
 
-- `luis@misreferidos.dev` / `demo1234` — rol **admin**, ve `/app/moderacion`.
-- `maria@misreferidos.dev` / `demo1234` — usuaria normal.
+`pnpm dev` directo contra el proyecto de Supabase en la nube; no hay base local
+ni seed. No hay cuentas precargadas: los usuarios se registran desde la app y
+el rol admin se asigna a mano en `user_roles` (ver [README](README.md)).
+
+## Tests
+
+| Capa | Dónde | Comando |
+|---|---|---|
+| Funciones puras | `lib/__tests__/` (Vitest) | `pnpm test` |
+| RLS, guards y límites | `supabase/tests/database/` (pgTAP vía psql, en transacción con rollback) | `pnpm test:db` |
+| E2E | `e2e/` (Playwright, contra build de producción) | `pnpm test:e2e` |
+
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) corre siempre lint,
+tipos y unitarios. Build, E2E y pgTAP necesitan un proyecto de Supabase y solo
+corren si el repo tiene los secrets configurados.
+
+## Límites de frecuencia
+
+Trigger `enforce_rate_limit` (migración `20260928010000`), exento para staff:
+10 referidos, 5 marcas y 20 reportes por usuario y hora. Va en la base porque
+la publishable key es pública y se puede saltar la app.
+
+Los eventos (`referral_events`) se deduplican por hora con `session_hash`
+(uid o IP + user-agent, hasheado). Frena recargas, no a quien llame a PostgREST
+directamente con hashes inventados.
+
+## 404
+
+`/marca/[slug]` y `/u/[username]` son PPR: el shell sale con 200 antes de que
+la página corra `notFound()`. Por eso el proxy
+([lib/supabase/proxy.ts](lib/supabase/proxy.ts)) comprueba si la entidad existe
+y, si no, reescribe a la página 404 con status 404. Es una consulta extra por
+visita a esas rutas.
 
 ## Pendiente
 
-- 404 real en `/u/[username]` y `/marca/[slug]` inexistentes: hoy devuelven 200.
-  Medido en build de producción — la respuesta trae `x-nextjs-prerender: 1` y
-  `x-nextjs-postponed: 1`, o sea que es el shell prerenderizado y las cabeceras
-  salen antes de que corra nada en request. **Probado y descartado:** mover el
-  `notFound()` a `generateMetadata()` no cambia el status. La única salida es
-  comprobar la existencia en el middleware.
-  No afecta al SEO mientras tanto: Next pone `<meta name="robots"
-  content="noindex">` en la página de not-found y no lo pone en las que existen.
-- Búsqueda server-side y paginación en Explorar. Los índices `search_vector` y
-  trigram están creados pero sin usar; hoy se filtra en el cliente, que con este
-  volumen es más rápido.
-- Subida de avatar (falta el bucket de Storage; `avatar_url` ya existe).
-- Activar la protección de contraseñas filtradas en el dashboard de Auth.
+- Búsqueda en el servidor para Explorar. Hoy carga hasta 1000 marcas (tope de
+  PostgREST), filtra en el cliente y pagina el render. Al pasar de ~1000 marcas
+  hay que mover el filtro al servidor (índice trigram en `brands.name`).
+- Eventos solo desde el servidor (quitar el INSERT a `anon` en
+  `referral_events`) para que no se puedan inflar vistas llamando a PostgREST.
+- Migrar los 10 avisos de `react-hooks/set-state-in-effect` (hoy en `warn`).
+- Activar la protección de contraseñas filtradas en el dashboard de Auth
+  (requiere plan Pro).

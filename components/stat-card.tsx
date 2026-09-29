@@ -16,7 +16,7 @@ export function StatCard({
   hint?: string;
 }) {
   return (
-    <Card className="p-5 bg-white/70 border-slate-200/70 shadow-sm">
+    <Card className="p-5 bg-white/70 border-slate-200/70 shadow-xs">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm text-muted-foreground">{label}</p>

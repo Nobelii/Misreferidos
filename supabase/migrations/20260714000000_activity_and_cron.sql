@@ -203,6 +203,7 @@ select cron.schedule(
 -- ============================================================================
 -- ROL DE STAFF
 -- ============================================================================
-insert into public.user_roles (user_id, role)
-select id, 'admin' from public.profiles where username = 'luis161'
-on conflict do nothing;
+-- Ninguna cuenta recibe admin desde una migración. El primer admin se asigna
+-- a mano, desde el SQL editor del dashboard, sobre un usuario ya registrado:
+--   insert into public.user_roles (user_id, role)
+--   select id, 'admin' from auth.users where email = '<correo>';

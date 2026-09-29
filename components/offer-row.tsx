@@ -60,7 +60,7 @@ export function OfferRow({
   return (
     <Card
       className={cn(
-        "overflow-hidden p-0 shadow-sm transition-[box-shadow,border-color] duration-200 ease-brand hover:shadow-md",
+        "overflow-hidden p-0 shadow-xs transition-[box-shadow,border-color] duration-200 ease-brand hover:shadow-md",
         highlighted
           ? "border-olive-300 bg-olive-50/40 ring-1 ring-olive-200"
           : "border-line bg-paper hover:border-olive-300",
@@ -161,7 +161,7 @@ export function OfferRow({
             }}
             className={cn(
               buttonVariants({ size: "sm" }),
-              "relative w-full gap-1.5 shadow-sm sm:w-auto sm:min-w-[8.5rem]",
+              "relative w-full gap-1.5 shadow-xs sm:w-auto sm:min-w-34",
               // Deja asomar el código difuminado por la derecha.
               benefit.code && "sm:mr-16",
             )}

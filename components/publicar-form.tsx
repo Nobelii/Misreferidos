@@ -343,7 +343,7 @@ export function PublicarForm({ categories }: { categories: Category[] }) {
                   id="category"
                   value={form.categorySlug}
                   onChange={(e) => set("categorySlug", e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   {categories.map((c) => (
                     <option key={c.slug} value={c.slug}>
@@ -378,7 +378,7 @@ export function PublicarForm({ categories }: { categories: Category[] }) {
                 onChange={(e) => set("description", e.target.value)}
                 rows={3}
                 placeholder="Lo usé al crear mi cuenta y el descuento se aplicó al pagar…"
-                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring resize-y"
               />
             </Field>
 

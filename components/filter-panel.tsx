@@ -39,7 +39,7 @@ export function FilterPanel({
 
   return (
     <aside className="shrink-0 lg:w-64 self-start sticky top-24">
-      <Card className="h-full p-5 bg-paper border-line shadow-sm">
+      <Card className="h-full p-5 bg-paper border-line shadow-xs">
         <h4 className="font-nav text-xs font-semibold uppercase tracking-widest text-olive-700 mb-4">
           Categoría
         </h4>

@@ -10,7 +10,13 @@ export const metadata = {
 };
 
 async function ExploreData() {
-  const [brands, categories] = await Promise.all([getBrands(), getCategories()]);
+  // Explorar filtra en el cliente, así que necesita el directorio entero: con el
+  // límite por defecto (60) las marcas menos usadas no aparecían nunca. 1000 es
+  // el tope de filas de PostgREST; el render se pagina en ExploreClient.
+  const [brands, categories] = await Promise.all([
+    getBrands(1000),
+    getCategories(),
+  ]);
 
   return <ExploreClient brands={brands} categories={categories} />;
 }

@@ -164,7 +164,7 @@ export function AuthModal({ isOpen, defaultTab = "login", onClose }: AuthModalPr
 
   return (
     // Wrapper: solo posicionamiento, SIN opacidad propia
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
       {/* Fondo con blur — animación propia, independiente del panel */}
       <div
         className={`absolute inset-0 bg-black/25 backdrop-blur-md ${overlayAnim}`}
@@ -206,7 +206,7 @@ export function AuthModal({ isOpen, defaultTab = "login", onClose }: AuthModalPr
               onClick={() => setTab(t)}
               className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
                 tab === t
-                  ? "bg-white text-slate-900 shadow-sm"
+                  ? "bg-white text-slate-900 shadow-xs"
                   : "text-slate-500 hover:text-slate-700"
               }`}
             >
@@ -299,7 +299,7 @@ export function AuthModal({ isOpen, defaultTab = "login", onClose }: AuthModalPr
                 </span>
                 <Input
                   id="signup-username"
-                  placeholder="luis161"
+                  placeholder="tu_usuario"
                   className="bg-white border-slate-200 pl-7"
                   required
                   maxLength={30}

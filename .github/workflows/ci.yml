@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Sin base de datos: lint, tipos y tests unitarios.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  # Build + E2E contra un proyecto de Supabase. El build prerenderiza con datos
+  # reales, así que necesita la base. Se salta si el repo no tiene los secrets
+  # (Settings → Secrets and variables → Actions):
+  #   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  #   SUPABASE_DB_URL (opcional, para los tests pgTAP)
+  # Usa un proyecto de desarrollo, no el de producción.
+  integration:
+    runs-on: ubuntu-latest
+    needs: check
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_SITE_URL: http://localhost:3100
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Skip without Supabase secrets
+        if: env.NEXT_PUBLIC_SUPABASE_URL == ''
+        run: echo "::notice::Sin secrets de Supabase; se salta build y E2E."
+
+      - uses: actions/checkout@v4
+        if: env.NEXT_PUBLIC_SUPABASE_URL != ''
+      - uses: pnpm/action-setup@v4
+        if: env.NEXT_PUBLIC_SUPABASE_URL != ''
+      - uses: actions/setup-node@v4
+        if: env.NEXT_PUBLIC_SUPABASE_URL != ''
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: env.NEXT_PUBLIC_SUPABASE_URL != ''
+
+      - name: Database tests (pgTAP)
+        if: env.SUPABASE_DB_URL != ''
+        run: pnpm test:db
+
+      - run: pnpm exec playwright install --with-deps chromium
+        if: env.NEXT_PUBLIC_SUPABASE_URL != ''
+      - name: Build + E2E
+        if: env.NEXT_PUBLIC_SUPABASE_URL != ''
+        run: pnpm test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

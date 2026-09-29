@@ -38,7 +38,7 @@ export function BenefitCard({
     >
       <Card
         className={cn(
-          "relative flex flex-col gap-3 p-4 h-full bg-paper border-line shadow-sm cursor-pointer",
+          "relative flex flex-col gap-3 p-4 h-full bg-paper border-line shadow-xs cursor-pointer",
           "transition-[transform,box-shadow,border-color] duration-200 ease-brand hover:shadow-md hover:-translate-y-0.5 hover:border-olive-300",
           featured && "ring-1 ring-olive-200 hover:shadow-lg",
         )}

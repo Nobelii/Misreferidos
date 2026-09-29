@@ -108,7 +108,7 @@ export function BrandCombobox({
       <div ref={containerRef} className="relative">
         <div
           className={cn(
-            "flex items-center gap-2 rounded-md border bg-background px-3 shadow-sm transition-colors focus-within:ring-1 focus-within:ring-ring",
+            "flex items-center gap-2 rounded-md border bg-background px-3 shadow-xs transition-colors focus-within:ring-1 focus-within:ring-ring",
             error ? "border-rose-300" : "border-input",
           )}
         >
@@ -122,7 +122,7 @@ export function BrandCombobox({
             }}
             onFocus={() => setOpen(true)}
             placeholder="Busca Spotify, Uber, Rappi…"
-            className="h-9 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            className="h-9 w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
             aria-label="Buscar marca"
             autoComplete="off"
           />

@@ -104,6 +104,12 @@ export async function createBrand(
       return { ok: false, error: "Esa marca ya existe. Búscala en la lista." };
     // Si el insert falla, el logo ya subido queda huérfano; lo limpiamos.
     await supabase.storage.from("brand-logos").remove([path]);
+    // Trigger enforce_rate_limit (migración 20260928010000).
+    if (error.message.includes("rate_limit"))
+      return {
+        ok: false,
+        error: "Has creado varias marcas seguidas. Espera un rato e inténtalo de nuevo.",
+      };
     return { ok: false, error: "No pudimos crear la marca. Inténtalo de nuevo." };
   }
 

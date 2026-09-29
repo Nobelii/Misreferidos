@@ -1,11 +1,13 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { BadgeCheck, MapPin, Calendar, Layers, MousePointerClick } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
+import { UserAvatar } from "@/components/user-avatar";
 import { BenefitCard } from "@/components/benefit-card";
 import { BenefitGridSkeleton } from "@/components/benefit-grid-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +23,28 @@ function formatJoined(iso: string) {
     month: "long",
     year: "numeric",
   });
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}): Promise<Metadata> {
+  const { username } = await params;
+  const publisher = await getPublisherByUsername(username);
+  if (!publisher) return { title: "Perfil no encontrado | MisReferidos" };
+
+  const title = `${publisher.name} (@${publisher.username}) | MisReferidos`;
+  const description =
+    publisher.bio ||
+    `Referidos y códigos compartidos por ${publisher.name} en MisReferidos.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/u/${publisher.username}` },
+    openGraph: { title, description, type: "profile", url: `/u/${publisher.username}` },
+  };
 }
 
 /**
@@ -82,9 +106,8 @@ export default async function PublicProfilePage({
 }) {
   const { username } = await params;
 
-  // Lectura cacheada (ver getPublisherByUsername): al no estar dentro del
-  // Suspense, notFound() corre antes de que la respuesta se comprometa y el
-  // perfil inexistente devuelve un 404 de verdad, no un 200 con cara de 404.
+  // Lectura cacheada (ver getPublisherByUsername). El status 404 lo pone el
+  // proxy (lib/supabase/proxy.ts); este notFound() es la red de seguridad.
   const publisher = await getPublisherByUsername(username);
   if (!publisher) notFound();
 
@@ -95,9 +118,12 @@ export default async function PublicProfilePage({
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-8 pt-8 pb-12">
         <Card className="p-6 md:p-8 bg-white/70 border-slate-200/70">
           <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60 text-white text-3xl font-bold">
-              {publisher.name.charAt(0).toUpperCase()}
-            </div>
+            <UserAvatar
+              name={publisher.name}
+              avatarUrl={publisher.avatarUrl}
+              size={80}
+              textClassName="text-3xl"
+            />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl md:text-3xl font-bold text-slate-900">

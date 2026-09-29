@@ -112,7 +112,7 @@ export function BrandModal({
   // quedaría anidado dentro del <form> de publicar (el combobox vive dentro de
   // ese form) y HTML no permite forms anidados → error de hidratación.
   return createPortal(
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-110 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/25 backdrop-blur-md animate-[modal-overlay-in_220ms_cubic-bezier(.33,1,.68,1)_forwards]"
         style={{ opacity: 0 }}
@@ -209,7 +209,7 @@ export function BrandModal({
                 id="brand-category"
                 value={categorySlug}
                 onChange={(e) => setCategorySlug(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="">Sin categoría</option>
                 {categories.map((c) => (

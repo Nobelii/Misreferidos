@@ -45,7 +45,7 @@ export function BrandPageHeader({ brand }: { brand: BrandSummary }) {
   ];
 
   return (
-    <Card className="p-6 md:p-8 bg-paper border-line shadow-sm">
+    <Card className="p-6 md:p-8 bg-paper border-line shadow-xs">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
         <BrandMark
           brand={brand.name}

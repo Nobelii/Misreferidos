@@ -184,6 +184,14 @@ export const ALLOWED_LOGO_TYPES = [
   "image/svg+xml",
 ] as const;
 
+/**
+ * Límites de subida de avatares. El bucket `avatars` los impone también
+ * (file_size_limit / allowed_mime_types); aquí están para dar feedback
+ * inmediato y un mensaje claro. Sin SVG: puede llevar scripts.
+ */
+export const MAX_AVATAR_BYTES = 1024 * 1024; // 1 MB
+export const ALLOWED_AVATAR_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+
 /** Dominio legible para mostrar bajo el nombre en el autocomplete ("spotify.com"). */
 export function brandDomain(websiteUrl: string): string {
   try {

@@ -83,7 +83,7 @@ export default async function DashboardPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 text-slate-200 sm:px-6 lg:px-8 lg:py-8">
       {/* ── Hero protagonista ─────────────────────────────────────────── */}
-      <section className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-6 sm:p-8">
+      <section className="relative overflow-hidden rounded-2xl border border-slate-800 bg-linear-to-br from-slate-900 to-slate-950 p-6 sm:p-8">
         {/* glow índigo tenue + marca decorativa sobria (sin 3D) */}
         <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-olive-500/10 blur-3xl" />
         <Sparkles className="pointer-events-none absolute right-6 top-6 h-24 w-24 text-slate-800/60" />

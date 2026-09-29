@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/stat-card";
 import { ActivityFeed } from "@/components/activity-feed";
 import { ProfileForm } from "@/components/profile-form";
+import { AvatarUpload } from "@/components/avatar-upload";
 import { NotificationPreferencesForm } from "@/components/notification-preferences-form";
 import { categoryIcon } from "@/lib/category-icons";
 import {
@@ -248,6 +249,8 @@ export default async function PerfilPage() {
                 Así te ve el resto de la comunidad.
               </p>
             </div>
+
+            <AvatarUpload name={me.display_name} initialUrl={me.avatar_url} />
 
             <ProfileForm
               initial={{

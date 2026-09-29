@@ -32,6 +32,13 @@ const DEFAULTS = {
   verifiedOnly: false,
 };
 
+const PAGE_SIZE = 24;
+
+/** Minúsculas y sin tildes: "Café" y "cafe" tienen que encontrarse. */
+function normalize(s: string) {
+  return s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+}
+
 /**
  * Explorar es un directorio de MARCAS, no de ofertas sueltas: una card por
  * marca, con su mejor oferta como gancho. El detalle vive un nivel más abajo,
@@ -43,7 +50,10 @@ const DEFAULTS = {
  * marca haría que un filtro devolviese cards cuyo gancho no lo cumple.
  *
  * Todo el filtrado es en memoria: el catálogo entero ya viene en la primera
- * carga y son pocas marcas, así que reordenar es instantáneo.
+ * carga (cacheado como estático) y son pocas marcas, así que reordenar es
+ * instantáneo. Lo que sí se pagina es el render, para que el DOM no crezca con
+ * el catálogo. Si el directorio pasa de un par de miles de marcas, toca mover
+ * el filtro al servidor (hay índice trigram en brands.name).
  */
 export function ExploreClient({
   brands,
@@ -57,6 +67,7 @@ export function ExploreClient({
   const [types, setTypes] = useState<BenefitType[]>(DEFAULTS.types);
   const [sort, setSort] = useState<SortKey>(DEFAULTS.sort);
   const [verifiedOnly, setVerifiedOnly] = useState(DEFAULTS.verifiedOnly);
+  const [visible, setVisible] = useState(PAGE_SIZE);
 
   // Diferir solo el texto evita que el input se sienta pegajoso al teclear.
   const deferredQuery = useDeferredValue(query);
@@ -76,7 +87,7 @@ export function ExploreClient({
   }, [brands]);
 
   const results = useMemo(() => {
-    const q = deferredQuery.trim().toLowerCase();
+    const q = normalize(deferredQuery.trim());
 
     const filtered = brands.filter((b) => {
       if (category !== ALL_CATEGORIES && b.bestCategory !== category) return false;
@@ -84,7 +95,7 @@ export function ExploreClient({
         return false;
       if (verifiedOnly && !b.hasVerified) return false;
       if (q) {
-        const haystack = `${b.name} ${b.bestCategory ?? ""}`.toLowerCase();
+        const haystack = normalize(`${b.name} ${b.bestCategory ?? ""}`);
         if (!haystack.includes(q)) return false;
       }
       return true;
@@ -110,7 +121,17 @@ export function ExploreClient({
     types.length > 0 ||
     verifiedOnly !== DEFAULTS.verifiedOnly;
 
+  // Cualquier cambio de filtro vuelve a la primera página. Se envuelven los
+  // setters en vez de usar un efecto para no pintar un frame con la página vieja.
+  function withReset<T>(set: (v: T) => void) {
+    return (v: T) => {
+      set(v);
+      setVisible(PAGE_SIZE);
+    };
+  }
+
   function reset() {
+    setVisible(PAGE_SIZE);
     setQuery(DEFAULTS.query);
     setCategory(DEFAULTS.category);
     setTypes(DEFAULTS.types);
@@ -118,6 +139,7 @@ export function ExploreClient({
   }
 
   function toggleType(t: BenefitType) {
+    setVisible(PAGE_SIZE);
     setTypes((prev) =>
       prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
     );
@@ -128,7 +150,7 @@ export function ExploreClient({
       <FilterPanel
         categories={categories}
         value={category}
-        onChange={setCategory}
+        onChange={withReset(setCategory)}
       />
 
       <div className="flex-1 min-w-0 space-y-5">
@@ -137,7 +159,7 @@ export function ExploreClient({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <Input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => withReset(setQuery)(e.target.value)}
             placeholder="Busca una marca…"
             className="pl-9 h-11 bg-white/70"
             aria-label="Buscar marcas"
@@ -145,7 +167,7 @@ export function ExploreClient({
           {query && (
             <button
               type="button"
-              onClick={() => setQuery("")}
+              onClick={() => withReset(setQuery)("")}
               aria-label="Limpiar búsqueda"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
             >
@@ -193,7 +215,7 @@ export function ExploreClient({
               <button
                 key={s.key}
                 type="button"
-                onClick={() => setSort(s.key)}
+                onClick={() => withReset(setSort)(s.key)}
                 aria-pressed={sort === s.key}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150 ease-brand",
@@ -211,7 +233,7 @@ export function ExploreClient({
               activas, así que no hay nada caducado que ocultar. */}
           <Toggle
             active={verifiedOnly}
-            onClick={() => setVerifiedOnly((v) => !v)}
+            onClick={() => withReset(setVerifiedOnly)(!verifiedOnly)}
             icon={<BadgeCheck className="w-3.5 h-3.5" />}
             label="Solo verificadas"
           />
@@ -254,11 +276,26 @@ export function ExploreClient({
             </Button>
           </Card>
         ) : (
-          <div className="animate-stagger grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-            {results.map((b) => (
-              <BrandCard key={b.slug} brand={b} />
-            ))}
-          </div>
+          <>
+            <div className="animate-stagger grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+              {results.slice(0, visible).map((b) => (
+                <BrandCard key={b.slug} brand={b} />
+              ))}
+            </div>
+            {results.length > visible && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisible((v) => v + PAGE_SIZE)}
+                >
+                  Ver más marcas
+                  <span className="ml-1.5 tabular-nums text-slate-400">
+                    ({results.length - visible})
+                  </span>
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

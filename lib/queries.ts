@@ -916,3 +916,41 @@ export function computeTrustSignals(
     mesesEnLaComunidad,
   };
 }
+
+/**
+ * Rutas públicas indexables para sitemap.xml: marcas con al menos una oferta
+ * activa y perfiles con algo publicado. Un perfil vacío es contenido pobre y
+ * no aporta nada al índice.
+ */
+export async function getSitemapEntries(): Promise<{
+  brands: { slug: string; lastModified?: string }[];
+  profiles: { username: string }[];
+}> {
+  "use cache";
+  cacheTag("catalog");
+  cacheLife("hours");
+
+  const supabase = createPublicClient();
+  const [brands, profiles] = await Promise.all([
+    supabase
+      .from("public_brands")
+      .select("slug, last_published_at")
+      .gt("offers_count", 0),
+    supabase
+      .from("public_profiles")
+      .select("username")
+      .gt("active_referrals", 0),
+  ]);
+
+  if (brands.error) throw brands.error;
+  if (profiles.error) throw profiles.error;
+
+  return {
+    brands: (brands.data ?? []).flatMap((b) =>
+      b.slug ? [{ slug: b.slug, lastModified: b.last_published_at ?? undefined }] : [],
+    ),
+    profiles: (profiles.data ?? []).flatMap((p) =>
+      p.username ? [{ username: p.username }] : [],
+    ),
+  };
+}

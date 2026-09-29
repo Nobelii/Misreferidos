@@ -107,7 +107,7 @@ export function DashboardSidebar({
   const footer = (
     <div className="border-t border-slate-800 pt-4">
       <div className="flex items-center gap-3 px-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-olive-500 to-olive-400 text-sm font-semibold text-white">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-olive-500 to-olive-400 text-sm font-semibold text-white">
           {displayName.charAt(0).toUpperCase()}
         </span>
         <div className="min-w-0">

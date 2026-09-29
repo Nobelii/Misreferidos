@@ -77,7 +77,7 @@ export function Navbar() {
 
   return (
     <>
-      <header className="font-nav sticky top-0 z-50 w-full bg-background/85 backdrop-blur-md border-b border-line/60 shadow-sm">
+      <header className="font-nav sticky top-0 z-50 w-full bg-background/85 backdrop-blur-md border-b border-line/60 shadow-xs">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="h-16 flex items-center justify-between gap-4">
 
@@ -103,7 +103,7 @@ export function Navbar() {
                   <input
                     type="text"
                     placeholder="Buscar referidos..."
-                    className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder:text-slate-400"
+                    className="flex-1 bg-transparent outline-hidden text-sm text-slate-700 placeholder:text-slate-400"
                   />
                 </label>
               </div>
@@ -136,7 +136,7 @@ export function Navbar() {
 
                   <button
                     onClick={() => openModal("signup")}
-                    className="px-3 py-1.5 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors shadow-sm"
+                    className="px-3 py-1.5 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors shadow-xs"
                   >
                     Registrarse
                   </button>
@@ -154,7 +154,7 @@ export function Navbar() {
 
                   <Link
                     href="/app/perfil"
-                    className="hidden sm:flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-full transition-colors shadow-sm"
+                    className="hidden sm:flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-full transition-colors shadow-xs"
                   >
                     <User className="w-4 h-4" />
                     Mi perfil
@@ -172,7 +172,7 @@ export function Navbar() {
                   </button>
 
                   {userMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white/95 backdrop-blur-sm border border-slate-300/50 rounded-lg shadow-lg py-1 text-sm">
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-white/95 backdrop-blur-xs border border-slate-300/50 rounded-lg shadow-lg py-1 text-sm">
                       <div className="px-4 py-2.5 border-b border-slate-100">
                         <p className="text-xs text-slate-500 truncate">{userEmail}</p>
                       </div>
@@ -222,7 +222,7 @@ export function Navbar() {
                   <input
                     type="text"
                     placeholder="Buscar..."
-                    className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder:text-slate-400"
+                    className="flex-1 bg-transparent outline-hidden text-sm text-slate-700 placeholder:text-slate-400"
                   />
                 </label>
               </div>

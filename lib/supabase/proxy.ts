@@ -1,6 +1,54 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/database.types";
 import { hasEnvVars } from "../utils";
+
+const BRAND_PATH = /^\/marca\/([^/]+)\/?$/;
+const PROFILE_PATH = /^\/u\/([^/]+)\/?$/;
+
+/**
+ * ¿Existe la entidad de una ruta pública con parámetro?
+ *
+ * Tiene que decidirse aquí y no en la página: /marca/[slug] y /u/[username]
+ * son PPR, así que el shell estático (y con él el status 200) sale antes de
+ * que la página llegue a llamar a notFound(). Devuelve null si la ruta no es
+ * de las que se comprueban.
+ *
+ * Marca: mismo criterio que getBrandBySlug — public_brands agrupa también los
+ * referidos anteriores a la tabla brands, y una marca recién creada sin ofertas
+ * solo está en brands.
+ */
+async function entityExists(
+  supabase: SupabaseClient<Database>,
+  pathname: string,
+): Promise<boolean | null> {
+  const brand = BRAND_PATH.exec(pathname);
+  if (brand) {
+    const slug = decodeURIComponent(brand[1]);
+    const [agg, bare] = await Promise.all([
+      supabase.from("public_brands").select("slug").eq("slug", slug).limit(1),
+      supabase.from("brands").select("slug").eq("slug", slug).limit(1),
+    ]);
+    // Ante un error de la base se deja pasar: mejor la página que un 404 falso.
+    if (agg.error || bare.error) return true;
+    return (agg.data?.length ?? 0) + (bare.data?.length ?? 0) > 0;
+  }
+
+  const profile = PROFILE_PATH.exec(pathname);
+  if (profile) {
+    const username = decodeURIComponent(profile[1]);
+    const { data, error } = await supabase
+      .from("public_profiles")
+      .select("username")
+      .eq("username", username)
+      .limit(1);
+    if (error) return true;
+    return (data?.length ?? 0) > 0;
+  }
+
+  return null;
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -15,7 +63,7 @@ export async function updateSession(request: NextRequest) {
 
   // With Fluid compute, don't put this client in a global environment
   // variable. Always create a new one on each request.
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
@@ -57,6 +105,8 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith("/auth") &&
     !request.nextUrl.pathname.startsWith("/u/") &&
     !request.nextUrl.pathname.startsWith("/marca/") &&
+    request.nextUrl.pathname !== "/sitemap.xml" &&
+    request.nextUrl.pathname !== "/robots.txt" &&
     // Solo redirige a /marca/[slug], que es público. Pedir sesión aquí mandaría
     // a login a quien abre un enlace viejo ya compartido, en vez de llevarlo a
     // la oferta.
@@ -66,6 +116,16 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);
+  }
+
+  if ((await entityExists(supabase, request.nextUrl.pathname)) === false) {
+    // Rewrite a una ruta que no existe: Next pinta app/not-found.tsx con 404.
+    // Se copian las cookies por lo mismo que explica el bloque de abajo.
+    const notFound = NextResponse.rewrite(new URL("/_not-found", request.url), {
+      status: 404,
+    });
+    supabaseResponse.cookies.getAll().forEach((c) => notFound.cookies.set(c));
+    return notFound;
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

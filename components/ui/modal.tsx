@@ -32,7 +32,7 @@ export function Modal({
   labelledBy,
   className,
   closeOnOverlay = true,
-  zIndexClassName = "z-[90]",
+  zIndexClassName = "z-90",
 }: {
   open: boolean;
   onClose: () => void;
@@ -160,7 +160,7 @@ export function Modal({
         aria-labelledby={labelledBy}
         tabIndex={-1}
         className={cn(
-          "relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-paper p-7 shadow-2xl shadow-black/10 outline-none",
+          "relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-paper p-7 shadow-2xl shadow-black/10 outline-hidden",
           panelAnim,
           className,
         )}
