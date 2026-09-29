@@ -5,10 +5,13 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/marca/", "/u/"],
-      // Zonas con sesión o sin valor para el índice. El proxy ya redirige a
-      // login, pero así el crawler no gasta presupuesto en ellas.
-      disallow: ["/app/", "/auth/"],
+      allow: ["/"],
+      // /app es la zona con sesión: el proxy redirige a login, así que el
+      // crawler solo gastaría presupuesto en redirecciones.
+      //
+      // /auth NO va aquí a propósito: lleva noindex (app/auth/layout.tsx), y un
+      // Disallow impediría que Google llegara a leerlo.
+      disallow: ["/app/"],
     },
     sitemap: `${siteUrl}/sitemap.xml`,
   };

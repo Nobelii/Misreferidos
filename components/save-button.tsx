@@ -9,10 +9,13 @@ import { cn } from "@/lib/utils";
 export function SaveButton({
   referralId,
   initialSaved,
+  onChange,
   className,
 }: {
   referralId: string;
   initialSaved: boolean;
+  /** Estado confirmado por el servidor, para que el padre lo haga "inicial". */
+  onChange?: (saved: boolean) => void;
   className?: string;
 }) {
   // Optimista: guardar es una acción trivial y reversible, así que el icono se
@@ -24,7 +27,7 @@ export function SaveButton({
   function handleClick() {
     startTransition(async () => {
       setSaved(!saved);
-      await toggleSave(referralId);
+      onChange?.(await toggleSave(referralId));
     });
   }
 

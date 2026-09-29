@@ -33,8 +33,8 @@ export function UpdatePasswordForm({
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      // Ya hay sesión activa: al home autenticado, no a la ruta demo del starter.
-      router.push("/app");
+      // Ya hay sesión activa: a la home.
+      router.push("/");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Ocurrió un error");
     } finally {

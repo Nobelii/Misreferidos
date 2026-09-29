@@ -32,12 +32,14 @@ export function OfferModal({
   onClose,
   brandLogoUrl,
   interaction,
+  onInteractionChange,
 }: {
   offer: Benefit;
   open: boolean;
   onClose: () => void;
   brandLogoUrl?: string;
   interaction: MyInteraction;
+  onInteractionChange?: (patch: Partial<MyInteraction>) => void;
 }) {
   const titleId = useModalTitleId();
   const [linkCopied, setLinkCopied] = useState(false);
@@ -198,13 +200,18 @@ export function OfferModal({
           referralId={offer.id}
           initialVote={interaction.vote}
           helpfulCount={offer.helpfulCount}
+          onChange={(vote) => onInteractionChange?.({ vote })}
         />
 
         {/* ReportDialog es un panel inline, no un modal: no anida portales. */}
         <ReportDialog referralId={offer.id} />
 
         <div className="flex gap-2">
-          <SaveButton referralId={offer.id} initialSaved={interaction.saved} />
+          <SaveButton
+            referralId={offer.id}
+            initialSaved={interaction.saved}
+            onChange={(saved) => onInteractionChange?.({ saved })}
+          />
           <button
             type="button"
             onClick={copyLink}

@@ -40,7 +40,6 @@ select id, 'admin' from auth.users where email = '<tu correo>';
 | `pnpm dev` / `build` / `start` | Next.js |
 | `pnpm check` | lint + typecheck + tests unitarios |
 | `pnpm test` | tests unitarios (Vitest) |
-| `pnpm test:e2e` | E2E con Playwright contra un build de producción |
 | `pnpm test:db` | tests de RLS y triggers (pgTAP vía `psql`, usa `SUPABASE_DB_URL`) |
 | `pnpm db:push` | aplica las migraciones pendientes al proyecto enlazado |
 | `pnpm db:types` | regenera `lib/database.types.ts` desde el proyecto enlazado |

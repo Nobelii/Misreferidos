@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useNow } from "@/components/use-now";
 import { BadgeCheck, Clock, Hash, TrendingUp, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,20 +42,18 @@ export function OfferRow({
 }) {
   const tag = benefit.tag ? TAG_STYLES[benefit.tag] : null;
   const TagIcon = tag?.icon;
-  const expiry = formatExpiry(benefit);
-  const endingSoon = isEndingSoon(benefit);
-
   // La oferta más usada de la marca se destaca. Se deriva del mismo auto_tag
   // que ya pinta el badge "Más usado", así que no hace falta ningún campo
   // nuevo ni tocar is_featured.
   const highlighted = benefit.tag === "popular";
 
-  // La hora se calcula tras montar, nunca en el render del servidor: esta
-  // página está cacheada y Cache Components prohíbe leer la hora en prerender.
-  // Consecuencia: la franja de actividad aparece con la hidratación.
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => setNow(Date.now()), []);
+  // La hora se lee tras hidratar, nunca en el render del servidor (ver
+  // useNow): la franja de actividad y la caducidad aparecen con la hidratación,
+  // pero el resto de la fila sí va en el HTML estático.
+  const now = useNow();
   const activity = now === null ? null : recentUseLabel(benefit.lastUsedAt, now);
+  const expiry = now === null ? undefined : formatExpiry(benefit, new Date(now));
+  const endingSoon = now !== null && isEndingSoon(benefit, new Date(now));
 
   return (
     <Card

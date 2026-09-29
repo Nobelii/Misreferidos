@@ -625,6 +625,22 @@ export type Database = {
         };
         Relationships: [];
       };
+      public_catalog_stats: {
+        Row: {
+          active_count: number | null;
+          new_today: number | null;
+          total_uses: number | null;
+          trending_category: string | null;
+        };
+        Relationships: [];
+      };
+      public_category_counts: {
+        Row: {
+          active_count: number | null;
+          category_slug: string | null;
+        };
+        Relationships: [];
+      };
       public_profiles: {
         Row: {
           active_referrals: number | null;

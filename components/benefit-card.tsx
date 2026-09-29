@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BadgeCheck, Users, Clock } from "lucide-react";
+import { BadgeCheck, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -10,9 +10,8 @@ import {
   TAG_STYLES,
   formatBenefitValue,
   formatCount,
-  formatExpiry,
-  isEndingSoon,
 } from "@/lib/benefit-format";
+import { ExpiryLabel } from "@/components/expiry-label";
 import type { Benefit } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -25,8 +24,6 @@ export function BenefitCard({
 }) {
   const tag = benefit.tag ? TAG_STYLES[benefit.tag] : null;
   const TagIcon = tag?.icon;
-  const expiry = formatExpiry(benefit);
-  const endingSoon = isEndingSoon(benefit);
 
   return (
     // Enlaza a la ficha de la marca con el modal de esta oferta ya abierto.
@@ -113,17 +110,7 @@ export function BenefitCard({
                 {formatCount(benefit.uses)} usos
               </span>
             )}
-            {expiry && (
-              <span
-                className={cn(
-                  "flex items-center gap-1",
-                  endingSoon && "text-rose-600 font-medium",
-                )}
-              >
-                <Clock className="w-3 h-3" />
-                {expiry}
-              </span>
-            )}
+            <ExpiryLabel benefit={benefit} />
           </div>
         </div>
 

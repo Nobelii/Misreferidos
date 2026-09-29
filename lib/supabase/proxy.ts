@@ -6,6 +6,19 @@ import { hasEnvVars } from "../utils";
 
 const BRAND_PATH = /^\/marca\/([^/]+)\/?$/;
 const PROFILE_PATH = /^\/u\/([^/]+)\/?$/;
+const CATEGORY_PATH = /^\/categoria\/([^/]+)\/?$/;
+
+/**
+ * Lo único que exige sesión: /app/* (publicar, dashboard, perfil, moderación).
+ * Todo lo demás es público. /app/referido/* queda fuera porque solo redirige a
+ * la ficha pública de la marca (enlaces antiguos ya compartidos).
+ */
+function requiresSession(pathname: string): boolean {
+  return (
+    (pathname === "/app" || pathname.startsWith("/app/")) &&
+    !pathname.startsWith("/app/referido/")
+  );
+}
 
 /**
  * ¿Existe la entidad de una ruta pública con parámetro?
@@ -15,9 +28,17 @@ const PROFILE_PATH = /^\/u\/([^/]+)\/?$/;
  * que la página llegue a llamar a notFound(). Devuelve null si la ruta no es
  * de las que se comprueban.
  *
- * Marca: mismo criterio que getBrandBySlug — public_brands agrupa también los
- * referidos anteriores a la tabla brands, y una marca recién creada sin ofertas
- * solo está en brands.
+ * Marca: mismo criterio que getBrandBySlug — existe si está en `brands` (aunque
+ * no tenga ofertas) o si algún referido activo lleva ese brand_slug (los
+ * anteriores a la tabla brands no tienen FK).
+ *
+ * Corre en CADA visita a estas rutas, también cuando la página sale estática de
+ * la caché, así que solo consulta columnas indexadas: brands.slug (único),
+ * referrals_brand_slug_idx (parcial sobre activos) y profiles.username
+ * (único). Nada de public_brands / public_profiles, que agregan.
+ *
+ * Categoría: existe si está activa en `categories` (slug único). Una categoría
+ * sin ofertas sí existe: su página enseña el estado vacío.
  */
 async function entityExists(
   supabase: SupabaseClient<Database>,
@@ -26,22 +47,41 @@ async function entityExists(
   const brand = BRAND_PATH.exec(pathname);
   if (brand) {
     const slug = decodeURIComponent(brand[1]);
-    const [agg, bare] = await Promise.all([
-      supabase.from("public_brands").select("slug").eq("slug", slug).limit(1),
+    const [bare, legacy] = await Promise.all([
       supabase.from("brands").select("slug").eq("slug", slug).limit(1),
+      supabase
+        .from("referrals")
+        .select("id")
+        .eq("brand_slug", slug)
+        .eq("status", "active")
+        .limit(1),
     ]);
     // Ante un error de la base se deja pasar: mejor la página que un 404 falso.
-    if (agg.error || bare.error) return true;
-    return (agg.data?.length ?? 0) + (bare.data?.length ?? 0) > 0;
+    if (bare.error || legacy.error) return true;
+    return (bare.data?.length ?? 0) + (legacy.data?.length ?? 0) > 0;
   }
 
   const profile = PROFILE_PATH.exec(pathname);
   if (profile) {
     const username = decodeURIComponent(profile[1]);
     const { data, error } = await supabase
-      .from("public_profiles")
+      .from("profiles")
       .select("username")
       .eq("username", username)
+      .eq("status", "active")
+      .limit(1);
+    if (error) return true;
+    return (data?.length ?? 0) > 0;
+  }
+
+  const category = CATEGORY_PATH.exec(pathname);
+  if (category) {
+    const slug = decodeURIComponent(category[1]);
+    const { data, error } = await supabase
+      .from("categories")
+      .select("slug")
+      .eq("slug", slug)
+      .eq("is_active", true)
       .limit(1);
     if (error) return true;
     return (data?.length ?? 0) > 0;
@@ -95,26 +135,12 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  // Allowlist de rutas públicas. Es deny-by-default: lo que no esté aquí exige
-  // sesión. `/marca/` y `/u/` son las dos caras del catálogo público — se
-  // comparten y se indexan, así que no pueden pedir login.
-  if (
-    request.nextUrl.pathname !== "/" &&
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth") &&
-    !request.nextUrl.pathname.startsWith("/u/") &&
-    !request.nextUrl.pathname.startsWith("/marca/") &&
-    request.nextUrl.pathname !== "/sitemap.xml" &&
-    request.nextUrl.pathname !== "/robots.txt" &&
-    // Solo redirige a /marca/[slug], que es público. Pedir sesión aquí mandaría
-    // a login a quien abre un enlace viejo ya compartido, en vez de llevarlo a
-    // la oferta.
-    !request.nextUrl.pathname.startsWith("/app/referido/")
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
+  // El sitio es público salvo /app/* (ver requiresSession). Sin sesión, a
+  // login; con `next` para volver a donde iba tras entrar.
+  if (!user && requiresSession(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
+    url.search = `?next=${encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search)}`;
     return NextResponse.redirect(url);
   }
 

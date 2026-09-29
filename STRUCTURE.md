@@ -59,20 +59,29 @@ cola de reportes de `/app/moderacion`.
 
 | Ruta | Quién | Qué |
 |---|---|---|
-| `/` | Público | Landing con el directorio de marcas |
-| `/u/[username]` | Público | Perfil público de quien publica |
+| `/` | Público | Landing: hero, métricas y las 24 marcas más usadas |
+| `/explorar` | Público | Directorio de **marcas**: buscador (`?q=`), filtros, orden, categorías e índice A–Z |
+| `/categoria/[slug]` | Público | Marcas con ofertas activas en una categoría |
 | `/marca/[slug]` | Público | Ficha de marca: cabecera + sus ofertas. `?oferta=[id]` abre el modal de detalle |
-| `/app` | Sesión | Home del catálogo |
-| `/app/explorar` | Sesión | Directorio de **marcas**: buscador, filtros y orden |
-| `/app/referido/[id]` | Público | Solo redirige a `/marca/[slug]?oferta=[id]` (enlaces antiguos) |
+| `/u/[username]` | Público | Perfil público de quien publica |
+| `/privacidad`, `/terminos` | Público | Páginas legales (texto genérico; falta revisión legal y datos de contacto) |
+| `/auth/*` | Público | Login (`?next=` para volver), registro, recuperación. `noindex` |
 | `/app/publicar` | Sesión | Alta de un beneficio (se publica al instante) |
 | `/app/dashboard` | Dueño | KPIs, necesitan atención, mis beneficios, guardados |
 | `/app/perfil` | Dueño | Datos, reputación, preferencias de notificación |
 | `/app/moderacion` | Staff | Reportes abiertos. 404 si no eres staff |
-| `/auth/*` | Público | Login, registro, recuperación |
+| `/app/referido/[id]` | Público | Solo redirige a `/marca/[slug]?oferta=[id]` (enlaces antiguos) |
+| `/app`, `/app/explorar` | — | 308 a `/` y `/explorar` (`next.config.ts`) |
 
-El middleware ([lib/supabase/proxy.ts](lib/supabase/proxy.ts)) protege `/app/*`;
-`/` y `/u/*` son públicas a propósito.
+Errores: `app/not-found.tsx` (404, con buscador y marcas populares),
+`app/error.tsx` (500 de cualquier página, con reintentar y el `digest` para
+cruzar con los logs) y `app/global-error.tsx` (si falla el layout raíz; estilos
+en línea porque ahí no hay globals.css).
+
+El sitio es público salvo `/app/*`: el proxy
+([lib/supabase/proxy.ts](lib/supabase/proxy.ts)) solo exige sesión ahí y manda
+a `/auth/login?next=<ruta>`. Tras entrar desde el modal, el usuario se queda en
+la página donde estaba.
 
 ## Base de datos
 
@@ -125,8 +134,20 @@ cabecera de marca, no la card del directorio. Si tirase de `catalog`, un solo
 voto vaciaría la caché de la home.
 
 Resultado: `/`, `/app`, `/app/explorar` y `/app/publicar` son **estáticas**
-(`○`, revalidate 1h). `/marca/[slug]` y `/u/[username]` son PPR: shell estático
-+ la parte del usuario en streaming.
+(`○`, revalidate 1h). `/marca/[slug]` y `/u/[username]` también, con ISR:
+`generateStaticParams` prerenderiza el top 50 en el build y, con
+`partialPrefetching`, el resto sirve el App Shell en su primera visita y queda
+estático para las siguientes. Salen de la CDN con `s-maxage` y con todo el
+contenido (ofertas y JSON-LD) en el HTML inicial.
+
+Para que sigan así, en esas páginas no puede haber nada de request:
+- Lo del usuario (guardados, votos) lo lee `useMyInteractions()` en el cliente.
+- `?oferta=` lo lee `BrandOffers` al montar, no la página.
+- La hora solo tras hidratar, con `useNow()`: leerla en el render — también en
+  un componente de cliente — aplaza el Suspense al navegador y el contenido sale
+  del HTML estático.
+
+Detalle y cómo verificarlo: skill `.claude/skills/nextjs-cache-isr/`.
 
 ### Cron (pg_cron)
 - `expire-referrals` — cada hora, vence los caducados.
@@ -145,10 +166,9 @@ el rol admin se asigna a mano en `user_roles` (ver [README](README.md)).
 |---|---|---|
 | Funciones puras | `lib/__tests__/` (Vitest) | `pnpm test` |
 | RLS, guards y límites | `supabase/tests/database/` (pgTAP vía psql, en transacción con rollback) | `pnpm test:db` |
-| E2E | `e2e/` (Playwright, contra build de producción) | `pnpm test:e2e` |
 
 CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) corre siempre lint,
-tipos y unitarios. Build, E2E y pgTAP necesitan un proyecto de Supabase y solo
+tipos y unitarios. Build y pgTAP necesitan un proyecto de Supabase y solo
 corren si el repo tiene los secrets configurados.
 
 ## Límites de frecuencia
@@ -169,8 +189,17 @@ la página corra `notFound()`. Por eso el proxy
 y, si no, reescribe a la página 404 con status 404. Es una consulta extra por
 visita a esas rutas.
 
+## Skills y agentes
+
+En `.claude/`: skills `supabase-backend` (RLS, vistas, funciones, queries),
+`nextjs-cache-isr` (caché, ISR y cómo verificar el HTML) y `seo`; agente
+`seo-reviewer` para auditar el sitio contra el build de producción.
+
 ## Pendiente
 
+- `set_referral_slugs()` calcula `brand_slug` con slugify(brand) aunque haya
+  `brand_id`: si una marca recibió slug con sufijo (`cafe-1a2b3c`), sus ofertas
+  quedan bajo `/marca/cafe`. Debería copiar `brands.slug` cuando hay FK.
 - Búsqueda en el servidor para Explorar. Hoy carga hasta 1000 marcas (tope de
   PostgREST), filtra en el cliente y pagina el render. Al pasar de ~1000 marcas
   hay que mover el filtro al servidor (índice trigram en `brands.name`).

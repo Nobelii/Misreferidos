@@ -11,8 +11,25 @@ import { UserAvatar } from "@/components/user-avatar";
 import { BenefitCard } from "@/components/benefit-card";
 import { BenefitGridSkeleton } from "@/components/benefit-grid-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getBenefitsByPublisher, getPublisherByUsername } from "@/lib/queries";
+import { JsonLd } from "@/components/json-ld";
+import {
+  getBenefitsByPublisher,
+  getPublisherByUsername,
+  getSitemapEntries,
+} from "@/lib/queries";
+import { profileJsonLd } from "@/lib/seo";
 import type { Publisher } from "@/lib/types";
+
+/**
+ * Mismo esquema de ISR que /marca/[slug]: se prerenderizan unos cuantos
+ * perfiles con referidos activos y el resto se genera estático tras su primera
+ * visita. Al menos un param siempre (lo exige Cache Components).
+ */
+export async function generateStaticParams() {
+  const { profiles } = await getSitemapEntries();
+  if (profiles.length === 0) return [{ username: "__placeholder__" }];
+  return profiles.slice(0, 50).map((p) => ({ username: p.username }));
+}
 
 function formatNumber(n: number) {
   return n.toLocaleString("es-ES");
@@ -43,7 +60,13 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: `/u/${publisher.username}` },
-    openGraph: { title, description, type: "profile", url: `/u/${publisher.username}` },
+    openGraph: {
+      title,
+      description,
+      type: "profile",
+      url: `/u/${publisher.username}`,
+      ...(publisher.avatarUrl && { images: [{ url: publisher.avatarUrl, alt: publisher.name }] }),
+    },
   };
 }
 
@@ -114,6 +137,7 @@ export default async function PublicProfilePage({
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
+      <JsonLd data={profileJsonLd(publisher)} />
 
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-8 pt-8 pb-12">
         <Card className="p-6 md:p-8 bg-white/70 border-slate-200/70">
@@ -171,7 +195,7 @@ export default async function PublicProfilePage({
         </Suspense>
 
         <Link
-          href="/app/explorar"
+          href="/explorar"
           className="text-sm text-primary font-medium hover:underline"
         >
           Explorar más referidos →

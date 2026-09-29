@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { safeNextPath } from "@/lib/utils";
 import { useState } from "react";
 
 export function LoginForm({
@@ -38,8 +39,8 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/app");
+      // Vuelve a donde iba (el proxy manda aquí con ?next=) o a la home.
+      router.push(safeNextPath(new URLSearchParams(window.location.search).get("next"), "/"));
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Ocurrió un error");
     } finally {

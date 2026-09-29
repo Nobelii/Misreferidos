@@ -11,7 +11,7 @@ const eslintConfig = defineConfig([
     // warn hasta migrarlos a useSyncExternalStore / estado derivado.
     rules: { "react-hooks/set-state-in-effect": "warn" },
   },
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "coverage/**", "playwright-report/**", "test-results/**"]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "coverage/**"]),
 ]);
 
 export default eslintConfig;

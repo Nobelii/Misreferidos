@@ -29,9 +29,9 @@ export function Footer() {
             </h4>
             <ul className="space-y-2">
               {[
-                { label: "Explorar referidos", href: "/explorar" },
-                { label: "Publicar referido", href: "/publicar" },
-                { label: "Dashboard", href: "/dashboard" },
+                { label: "Explorar marcas", href: "/explorar" },
+                { label: "Publicar referido", href: "/app/publicar" },
+                { label: "Dashboard", href: "/app/dashboard" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link

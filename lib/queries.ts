@@ -252,8 +252,9 @@ export async function getOffersByBrand(
 }
 
 /**
- * Categorías con su conteo de referidos activos. El count sale de un head-count
- * por categoría en vez de traerse las filas: Explorar solo necesita el número.
+ * Categorías con su conteo de referidos activos. El conteo lo hace la vista
+ * public_category_counts en SQL: traerse las filas para contarlas en JS movía
+ * datos de más y, pasados 1000 referidos (max_rows de PostgREST), contaba mal.
  *
  * Cacheada: el listado de categorías es idéntico para todo el mundo y solo
  * cambia cuando alguien publica. El tag `catalog` lo invalidan las actions que
@@ -269,25 +270,60 @@ export async function getCategories(): Promise<Category[]> {
   const [{ data: categories }, { data: rows }] = await Promise.all([
     supabase
       .from("categories")
-      .select("slug, name, icon_name")
+      .select("slug, name, icon_name, description")
       .eq("is_active", true)
       .order("position"),
-    supabase.from("public_referrals").select("category_slug"),
+    supabase.from("public_category_counts").select("category_slug, active_count"),
   ]);
 
   const counts = new Map<string, number>();
   for (const r of rows ?? []) {
-    if (r.category_slug) {
-      counts.set(r.category_slug, (counts.get(r.category_slug) ?? 0) + 1);
-    }
+    if (r.category_slug) counts.set(r.category_slug, r.active_count ?? 0);
   }
 
   return (categories ?? []).map((c) => ({
     slug: c.slug,
     name: c.name,
     iconName: c.icon_name,
+    description: c.description ?? undefined,
     count: counts.get(c.slug) ?? 0,
   }));
+}
+
+/** Una categoría activa por su slug. Reutiliza la lista cacheada de getCategories. */
+export async function getCategoryBySlug(slug: string): Promise<Category | null> {
+  const categories = await getCategories();
+  return categories.find((c) => c.slug === slug) ?? null;
+}
+
+/**
+ * Las marcas con al menos una oferta activa en una categoría, para
+ * /categoria/[slug].
+ *
+ * No filtra por `bestCategory` (la categoría de la MEJOR oferta, que es lo que
+ * usa el filtro de Explorar): una marca con un 50% en compras y un envío gratis
+ * en comida también es una marca de comida, y su página de categoría tiene que
+ * enlazarla.
+ *
+ * Dos lecturas cacheadas: los brand_slug de la categoría (filtro indexado por
+ * category_id vía la vista) y el directorio completo, que ya está en caché por
+ * Explorar. Mismo tag `catalog`: publicar o retirar una oferta la refresca.
+ */
+export async function getBrandsByCategory(slug: string): Promise<BrandSummary[]> {
+  "use cache";
+  cacheTag("catalog");
+  cacheLife("hours");
+
+  const supabase = createPublicClient();
+  const [{ data, error }, brands] = await Promise.all([
+    supabase.from("public_referrals").select("brand_slug").eq("category_slug", slug),
+    getBrands(1000),
+  ]);
+
+  if (error) throw error;
+
+  const slugs = new Set((data ?? []).flatMap((r) => (r.brand_slug ? [r.brand_slug] : [])));
+  return brands.filter((b) => slugs.has(b.slug));
 }
 
 export interface HomeStats {
@@ -301,6 +337,10 @@ export interface HomeStats {
  * La banda de métricas de la home. Cacheada con el mismo tag que el catálogo:
  * son cifras de comunidad, no del visitante, y "nuevos hoy" con una hora de
  * desfase sigue siendo verdad.
+ *
+ * Una fila ya agregada (vista public_catalog_stats) en vez de todas las ofertas
+ * activas: antes se sumaba en JS y el tope de 1000 filas de PostgREST
+ * truncaba las cifras sin avisar.
  */
 export async function getHomeStats(): Promise<HomeStats> {
   "use cache";
@@ -308,30 +348,19 @@ export async function getHomeStats(): Promise<HomeStats> {
   cacheLife("hours");
 
   const supabase = createPublicClient();
-  const { data } = await supabase
-    .from("public_referrals")
-    .select("category_name, copies_count, clicks_count, published_at");
+  const { data, error } = await supabase
+    .from("public_catalog_stats")
+    .select("active_count, new_today, total_uses, trending_category")
+    .single();
 
-  const rows = data ?? [];
-  const since = Date.now() - 86_400_000;
+  if (error) throw error;
 
-  const byCategory = new Map<string, number>();
-  let usosTotales = 0;
-  let nuevosHoy = 0;
-
-  for (const r of rows) {
-    const uses = (r.copies_count ?? 0) + (r.clicks_count ?? 0);
-    usosTotales += uses;
-    if (r.published_at && new Date(r.published_at).getTime() >= since) nuevosHoy++;
-    if (r.category_name) {
-      byCategory.set(r.category_name, (byCategory.get(r.category_name) ?? 0) + uses);
-    }
-  }
-
-  const enTendencia =
-    [...byCategory.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
-
-  return { activos: rows.length, nuevosHoy, enTendencia, usosTotales };
+  return {
+    activos: data.active_count ?? 0,
+    nuevosHoy: data.new_today ?? 0,
+    enTendencia: data.trending_category ?? "—",
+    usosTotales: Number(data.total_uses ?? 0),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -624,6 +653,10 @@ export async function getMyInteraction(referralId: string) {
 
 /**
  * Todo lo que el usuario en sesión ha guardado o votado, indexado por referido.
+ *
+ * SIN USO desde que /marca/[slug] es estática: leer cookies() en el servidor
+ * la hacía dinámica entera, así que ahora lo resuelve useMyInteractions() en el
+ * cliente. Se conserva como la lectura de servidor equivalente.
  *
  * La ficha de marca abre el detalle en un modal, sin ir al servidor: para que
  * el "¿te sirvió?" y el "guardar" salgan ya en su estado real hay que tenerlos

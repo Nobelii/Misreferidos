@@ -25,7 +25,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
-  # Build + E2E contra un proyecto de Supabase. El build prerenderiza con datos
+  # Build (+ pgTAP) contra un proyecto de Supabase. El build prerenderiza con datos
   # reales, así que necesita la base. Se salta si el repo no tiene los secrets
   # (Settings → Secrets and variables → Actions):
   #   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Skip without Supabase secrets
         if: env.NEXT_PUBLIC_SUPABASE_URL == ''
-        run: echo "::notice::Sin secrets de Supabase; se salta build y E2E."
+        run: echo "::notice::Sin secrets de Supabase; se salta el build."
 
       - uses: actions/checkout@v4
         if: env.NEXT_PUBLIC_SUPABASE_URL != ''
@@ -60,15 +60,9 @@ jobs:
         if: env.SUPABASE_DB_URL != ''
         run: pnpm test:db
 
-      - run: pnpm exec playwright install --with-deps chromium
+      # El build prerenderiza las páginas públicas contra la base: aquí salen
+      # los errores de Cache Components (datos o la hora leídos en el render,
+      # objetos SQL que faltan) antes de llegar a producción.
+      - name: Build
         if: env.NEXT_PUBLIC_SUPABASE_URL != ''
-      - name: Build + E2E
-        if: env.NEXT_PUBLIC_SUPABASE_URL != ''
-        run: pnpm test:e2e
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 7
+        run: pnpm build

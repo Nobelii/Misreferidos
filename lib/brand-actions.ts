@@ -177,8 +177,7 @@ async function setBrandStatus(
     revalidatePath(`/marca/${brand.slug}`);
   }
   revalidatePath("/app/moderacion");
-  revalidatePath("/app/explorar");
-  revalidatePath("/app");
+  revalidatePath("/explorar");
   revalidatePath("/");
   return { ok: true, id: brandId };
 }

@@ -15,9 +15,10 @@ import {
   Compass,
   ShieldCheck,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
+import { EXPLORE_SEARCH_EVENT } from "@/lib/explore-search";
 
 // El modal (formularios + validación) se descarga solo al abrirse, no en el
 // bundle inicial de cada página.
@@ -69,6 +70,23 @@ export function Navbar() {
     router.refresh();
   };
 
+  // El buscador es un <form action="/explorar"> normal (funciona sin JS).
+  // Con JS se navega en cliente; y si ya estamos en Explorar, no se navega:
+  // se le pasa la búsqueda con un evento (ver ExploreClient). La ruta se lee
+  // al enviar y no con usePathname(): el navbar está en todas las páginas, y
+  // leerla en el render podría sacar del prerender las rutas con parámetros.
+  const onSearch = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
+    setMobileOpen(false);
+    if (window.location.pathname === "/explorar") {
+      window.dispatchEvent(new CustomEvent(EXPLORE_SEARCH_EVENT, { detail: q }));
+      window.history.replaceState(null, "", q ? `/explorar?q=${encodeURIComponent(q)}` : "/explorar");
+      return;
+    }
+    router.push(q ? `/explorar?q=${encodeURIComponent(q)}` : "/explorar");
+  };
+
   const openModal = (tab: AuthTab) => {
     setModalTab(tab);
     setModalOpen(true);
@@ -97,22 +115,29 @@ export function Navbar() {
               </Link>
 
               {/* Buscador (se extiende) */}
-              <div className="hidden md:flex flex-1 max-w-2xl">
+              <form
+                action="/explorar"
+                role="search"
+                onSubmit={onSearch}
+                className="hidden md:flex flex-1 max-w-2xl"
+              >
                 <label className="w-full flex items-center gap-2.5 px-4 py-2 bg-paper/70 border border-line rounded-full text-slate-400 cursor-text hover:border-olive-300 transition-colors focus-within:ring-2 focus-within:ring-olive-400/40 focus-within:border-olive-400">
                   <Search className="w-4 h-4 shrink-0" />
                   <input
-                    type="text"
-                    placeholder="Buscar referidos..."
+                    type="search"
+                    name="q"
+                    placeholder="Buscar una marca..."
+                    aria-label="Buscar una marca"
                     className="flex-1 bg-transparent outline-hidden text-sm text-slate-700 placeholder:text-slate-400"
                   />
                 </label>
-              </div>
+              </form>
             </div>
 
             {/* ── Derecha (grupo pegado a la derecha) ── */}
             <div className="flex items-center gap-2 md:gap-3 shrink-0">
               {/* Explorar (junto a Publicar) */}
-              <Link href="/app/explorar" className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-md hover:bg-slate-100 transition-colors whitespace-nowrap">
+              <Link href="/explorar" className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-md hover:bg-slate-100 transition-colors whitespace-nowrap">
                 <Compass className="w-4 h-4" />
                 Explorar
               </Link>
@@ -216,21 +241,23 @@ export function Navbar() {
           {/* Mobile: Buscador + menú */}
           {mobileOpen && (
             <>
-              <div className="pb-3">
+              <form action="/explorar" role="search" onSubmit={onSearch} className="pb-3">
                 <label className="flex items-center gap-2.5 px-3 py-2 bg-paper/70 border border-line rounded-lg text-slate-400 cursor-text focus-within:ring-2 focus-within:ring-olive-400/40">
                   <Search className="w-4 h-4 shrink-0" />
                   <input
-                    type="text"
-                    placeholder="Buscar..."
+                    type="search"
+                    name="q"
+                    placeholder="Buscar una marca..."
+                    aria-label="Buscar una marca"
                     className="flex-1 bg-transparent outline-hidden text-sm text-slate-700 placeholder:text-slate-400"
                   />
                 </label>
-              </div>
+              </form>
 
               <div className="border-t border-slate-100 py-3 space-y-1">
                 {!isAuthenticated ? (
                   <>
-                    <Link href="/app/explorar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md">
+                    <Link href="/explorar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md">
                       Explorar
                     </Link>
                     <Link href="/app/publicar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md flex items-center gap-2">

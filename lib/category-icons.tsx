@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import {
   LayoutGrid,
   Banknote,
@@ -37,3 +38,19 @@ export function categoryIcon(iconName: string | null | undefined): LucideIcon {
 
 /** Icono del sentinela "Todas" de los filtros. */
 export const ALL_CATEGORIES_ICON = LayoutGrid;
+
+/**
+ * El icono de una categoría como componente. Resolver el icono con
+ * categoryIcon() y pintarlo en el mismo render lo marca la regla
+ * react-hooks/static-components (no puede saber que devuelve un componente ya
+ * existente del mapa, no uno nuevo); createElement evita el falso positivo.
+ */
+export function CategoryIcon({
+  iconName,
+  className,
+}: {
+  iconName: string | null | undefined;
+  className?: string;
+}) {
+  return createElement(categoryIcon(iconName), { className });
+}

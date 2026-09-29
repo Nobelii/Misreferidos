@@ -125,18 +125,21 @@ export async function trackEvent(
   kind: Enums<"event_kind">,
 ): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims y no getUser: esto corre en cada vista, copia y clic, y getUser
+  // es un viaje de red al servidor de Auth. getClaims verifica el JWT en local,
+  // y aquí solo hace falta el id para el fingerprint (el RLS del INSERT vuelve
+  // a comprobar actor_id contra auth.uid()).
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = (claims?.claims?.sub as string | undefined) ?? null;
 
   const h = await headers();
-  const fingerprint = user
-    ? `u:${user.id}`
+  const fingerprint = userId
+    ? `u:${userId}`
     : `a:${h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? ""}|${h.get("user-agent") ?? ""}`;
 
   await supabase.from("referral_events").insert({
     referral_id: referralId,
-    actor_id: user?.id ?? null,
+    actor_id: userId,
     kind,
     session_hash: createHash("sha256").update(fingerprint).digest("hex").slice(0, 32),
   });
@@ -320,8 +323,7 @@ export async function updateMyAvatar(
 function revalidateCatalog(): void {
   updateTag("catalog");
   revalidatePath("/");
-  revalidatePath("/app");
-  revalidatePath("/app/explorar");
+  revalidatePath("/explorar");
 }
 
 /**

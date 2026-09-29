@@ -59,7 +59,7 @@ export function AuthModal({ isOpen, defaultTab = "login", onClose }: AuthModalPr
       });
       if (error) throw error;
       onClose();
-      router.push("/app");
+      // El sitio es público: tras entrar se queda donde estaba; solo se refresca.
       router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ocurrió un error");
@@ -94,7 +94,7 @@ export function AuthModal({ isOpen, defaultTab = "login", onClose }: AuthModalPr
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/app`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(window.location.pathname)}`,
           data: {
             username,
             display_name: displayName.trim() || username,
@@ -106,7 +106,7 @@ export function AuthModal({ isOpen, defaultTab = "login", onClose }: AuthModalPr
       // Si la confirmación de email está desactivada, ya hay sesión → entrar.
       if (data.session) {
         onClose();
-        router.push("/app");
+        // El sitio es público: tras entrar se queda donde estaba; solo se refresca.
         router.refresh();
       } else {
         // Confirmación de email activada: avisar al usuario.

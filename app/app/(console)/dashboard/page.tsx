@@ -111,7 +111,7 @@ export default async function DashboardPage() {
               Publicar referido
             </Link>
             <Link
-              href="/app/explorar"
+              href="/explorar"
               className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition-colors duration-150 ease-brand hover:border-slate-600 hover:bg-slate-800/50"
             >
               <Compass className="h-4 w-4" />

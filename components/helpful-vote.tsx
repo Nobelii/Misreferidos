@@ -13,10 +13,13 @@ export function HelpfulVote({
   referralId,
   initialVote,
   helpfulCount,
+  onChange,
 }: {
   referralId: string;
   initialVote: boolean | null;
   helpfulCount: number;
+  /** Voto confirmado por el servidor, para que el padre lo haga "inicial". */
+  onChange?: (vote: boolean | null) => void;
 }) {
   const [vote, setVote] = useOptimistic(initialVote);
   const [, startTransition] = useTransition();
@@ -24,7 +27,7 @@ export function HelpfulVote({
   function cast(value: boolean) {
     startTransition(async () => {
       setVote(vote === value ? null : value);
-      await voteHelpful(referralId, value);
+      onChange?.(await voteHelpful(referralId, value));
     });
   }
 

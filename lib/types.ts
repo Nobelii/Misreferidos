@@ -29,6 +29,8 @@ export interface Category {
   name: string;
   /** Nombre del icono Lucide; se resuelve a componente en lib/category-icons.tsx */
   iconName: string | null;
+  /** Texto editorial de la categoría (categories.description); opcional. */
+  description?: string;
   count: number;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Search, SlidersHorizontal, X, BadgeCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   type Category,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { EXPLORE_SEARCH_EVENT } from "@/lib/explore-search";
 
 type SortKey = "populares" | "nuevas" | "mejor";
 
@@ -68,6 +69,22 @@ export function ExploreClient({
   const [sort, setSort] = useState<SortKey>(DEFAULTS.sort);
   const [verifiedOnly, setVerifiedOnly] = useState(DEFAULTS.verifiedOnly);
   const [visible, setVisible] = useState(PAGE_SIZE);
+
+  // La búsqueda que llega del navbar (/explorar?q=...). Se lee de la URL al
+  // montar y no con useSearchParams(): eso obligaría a renderizar el grid solo
+  // en el cliente y lo sacaría del HTML estático que indexa Google. Si ya
+  // estamos en Explorar, el navbar no navega: avisa con un evento.
+  useEffect(() => {
+    const initial = new URLSearchParams(window.location.search).get("q");
+    if (initial) setQuery(initial);
+
+    function onSearch(e: Event) {
+      setQuery((e as CustomEvent<string>).detail);
+      setVisible(PAGE_SIZE);
+    }
+    window.addEventListener(EXPLORE_SEARCH_EVENT, onSearch);
+    return () => window.removeEventListener(EXPLORE_SEARCH_EVENT, onSearch);
+  }, []);
 
   // Diferir solo el texto evita que el input se sienta pegajoso al teclear.
   const deferredQuery = useDeferredValue(query);

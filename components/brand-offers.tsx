@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { OfferRow } from "@/components/offer-row";
 import { OfferModal } from "@/components/offer-modal";
 import { magnitude } from "@/lib/benefit-format";
+import { useMyInteractions } from "@/components/use-my-interactions";
 import type { Benefit, MyInteraction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -36,23 +37,23 @@ const NO_INTERACTION: MyInteraction = { saved: false, vote: null };
  * igual porque la fuente de verdad es `openId`, pero si algún día otro
  * componente de esta página lee useSearchParams, se desincronizará.
  *
- * Quien abre la URL con ?oferta= directo no pasa por nada de esto: el Server
- * Component resuelve el id y llega por initialOfferId, así que el modal se monta
- * ya abierto en el primer render.
+ * Quien abre la URL con ?oferta= directo lo resuelve el efecto de montaje, que
+ * lee la URL igual que popstate. No se lee en el servidor a propósito: los
+ * searchParams son datos de request y harían dinámica la página entera, que
+ * así sale estática de la CDN. Tampoco con useSearchParams(), que obligaría a
+ * renderizar la lista solo en el cliente y la sacaría del HTML que indexa
+ * Google.
  */
 export function BrandOffers({
   offers,
-  interactions,
-  initialOfferId,
   brandLogoUrl,
 }: {
   offers: Benefit[];
-  interactions: Record<string, MyInteraction>;
-  initialOfferId?: string;
   brandLogoUrl?: string;
 }) {
   const [sort, setSort] = useState<SortKey>("recientes");
-  const [openId, setOpenId] = useState<string | null>(initialOfferId ?? null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const { interactions, update } = useMyInteractions(offers.map((o) => o.id));
 
   const sorted = useMemo(() => {
     const byDate = (v?: string) => (v ? new Date(v).getTime() : 0);
@@ -88,6 +89,7 @@ export function BrandOffers({
       const id = new URLSearchParams(window.location.search).get(PARAM);
       setOpenId(id);
     }
+    onPop();
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -158,6 +160,7 @@ export function BrandOffers({
           onClose={close}
           brandLogoUrl={brandLogoUrl}
           interaction={interactions[openOffer.id] ?? NO_INTERACTION}
+          onInteractionChange={(patch) => update(openOffer.id, patch)}
         />
       )}
     </div>
